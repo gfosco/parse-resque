@@ -1,5 +1,5 @@
 /**
- * ParseResque
+ * ParseRita
  *
  * An implementation of Resque for Parse Cloud Code
  *
@@ -25,7 +25,7 @@ var setRunLimit = function(timeInMs) {
   runTime = timeInMs;
 }
 
-var addJob = function(jobName, func) {
+var job = function(jobName, func) {
   jobs[jobName] = func;
 }
 
@@ -87,10 +87,14 @@ var poll = function() {
       });
       return promise;
     }).then(function() {
-      return log(
-        'Worker cycle completed after ' + jobCount + ' jobs processed',
-        { jobCount : jobCount }
-      );
+      if (jobCount) {
+        return log(
+          'Worker cycle completed after ' + jobCount + ' jobs processed',
+          { jobCount : jobCount }
+        );
+      } else {
+        return Parse.Promise.as();
+      }
     });
   }).then(delay).then(poll);
 };

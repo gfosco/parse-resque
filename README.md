@@ -1,62 +1,55 @@
-# ParseResque
+### ParseRita
 
-Parse.com Cloud Code port of Resque.
+Rita, the Parse Cloud Code job assistant.  She defines, queues, and processes work on a constant basis.
 
-## USAGE
+#### USAGE
 
-First, you'll want to configure some jobs:
+First, you'll want to define some jobs:
 
 ```javascript
-var resque = require('cloud/parse-resque');
+var rita = require('cloud/parse-rita');
 
-resque.addJob('hello', function(scalarArgs, objectArgs) {
-  console.log('Hello!');
+rita.job('hello', function(scalarArgs, objectArgs) {
   return Parse.Promise.as('Hi!');
 });
 
-resque.addJob('add', function(scalarArgs, objectArgs) {
+rita.job('add', function(scalarArgs, objectArgs) {
   var sum = scalarArgs[0] + scalarArgs[1];
   return Parse.Promise.as(sum);
 });
 
-resque.addJob('updateCount', function(scalarArgs, objectArgs) {
+rita.job('updateCount', function(scalarArgs, objectArgs) {
   var object = objectArgs[0];
   var field = scalarArgs[0];
   var amount = scalarArgs[1];
   object.increment(field, amount);
-  return object.save();
+  object.save();
 });
 ```
 
-Then, queue up a few jobs:
+Then, queue up a few jobs, providing a queue name, job name, an array of scalar arguments, and an array of Parse Objects.  These arguments will be available to the job, and the passed in Parse Objects will be included.
 
 ```javascript
-var resque = require('cloud/parse-resque');
+var rita = require('cloud/parse-rita');
 
-resque.enqueue('test', 'hello');
-resque.enqueue('test', 'add', [1,2]);
-resque.enqueue('test', 'updateCount', ['countField', 1], [object]);
+rita.enqueue('test', 'hello');
+rita.enqueue('test', 'add', [1,2]);
+rita.enqueue('test', 'updateCount', ['countField', 1], [object]);
 ```
 
-Next, you'll want to setup a worker to handle these jobs,
-using a Background Job in Parse Cloud Code:
+Next, define a Background Job that will run your worker:
 
 ```javascript
 Parse.Cloud.job('testworker', function(request, status) {
-  resque.worker(['test']);
+  rita.worker(['test']);
 });
 ```
 
-Schedule the background job to run every minute.  Background jobs have a time
- limit of 15 minutes.  This implementation will run for approximately 14
- minutes 30 seconds by default, leaving very little time between the end of
- one run and the start of the next one.
-
-You can alter the defaults with values in milliseconds:
+By default, this will process jobs for 4 minutes and 30 seconds and pause for 15 seconds after clearing the job queue.  You can alter the defaults with values in milliseconds:
 
 ```javascript
-resque.setDelayOnEmptyQueue(15000);
-resque.setRunLimit(14.5 * 60 * 1000);
+rita.setDelayOnEmptyQueue(15000);
+rita.setRunLimit(4.5 * 60 * 1000);
 ```
 
-Feel free to submit pull requests, issues, or get in touch with me at fjm@fb.com
+With this module you can attain a finer granularity than simpler job systems running at every-minute intervals.
