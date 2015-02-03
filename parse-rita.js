@@ -176,7 +176,7 @@ function terminate() {
 }
 
 module.exports = {
-  addJob : addJob,
+  job : job,
   enqueue : enqueue,
   worker : worker,
   setDelayOnEmptyQueue : setDelayOnEmptyQueue,
