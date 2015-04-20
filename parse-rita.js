@@ -67,25 +67,23 @@ var worker = function(queuesParam) {
 };
 
 var poll = function() {
-  return Parse.Promise.as().then(timeLimitCheck).then(function() {
+  return timeLimitCheck().then(function() {
     var query = new Parse.Query(ResqueQueue);
     query.containedIn('queue', queues);
     query.equalTo('processed', 0);
     query.include('objectArgs');
     var jobCount = 0;
     return query.each(function(job) {
-      var promise = new Parse.Promise();
       jobCount++;
-      perform(job).then(function() {
-        promise.resolve();
+      return perform(job).then(function() {
+        return Parse.Promise.as();
       }, function(err) {
         log(
           'Failed to perform job ' + job.id, { error: err }
         ).then(function() {
-          promise.resolve();
+          return Parse.Promise.as();
         });
       });
-      return promise;
     }).then(function() {
       if (jobCount) {
         return log(
@@ -102,9 +100,8 @@ var poll = function() {
 var perform = function(job) {
   job.increment('processed');
   return job.save(null, { useMasterKey : true }).then(function(job) {
-    var promise = new Parse.Promise();
     if (job.get('processed') != 1) {
-      return promise.resolve();
+      return Parse.Promise.as();
     }
     var jobName = job.get('jobName');
     if (!jobs[jobName]) {
@@ -116,24 +113,18 @@ var perform = function(job) {
           status : 'error',
           result : 'Undefined jobName'
         }, { useMasterKey : true });
-      }).then(function() {
-        promise.resolve();
       });
     }
-    var promise = new Parse.Promise();
     var scalarArgs = job.get('scalarArgs');
     var objectArgs = job.get('objectArgs');
-    jobs[jobName](scalarArgs, objectArgs).then(function(result) {
+    return jobs[jobName](scalarArgs, objectArgs).then(function(result) {
       return job.save({
         'status' : 'completed',
         'result' : result.toString()
       }, { useMasterKey : true });
-    }).then(timeLimitCheck).then(function() {
-      promise.resolve();
-    }, function(err) {
-      promise.resolve();
+    }).then(timeLimitCheck).fail(function(error) {
+      return Parse.Promise.as();
     });
-    return promise;
   });
 };
 
