@@ -55,8 +55,8 @@ var enqueue = function(queue, jobName, scalarArgs, objectArgs) {
 var worker = function(queuesParam) {
   startTime = Date.now();
   queues = queuesParam;
+
   if (!queues || !queues.length) {
-    return log('Failed to start worker, queues not provided', []);
     return log('Failed to start worker, queues not provided', {}).then(null, createHandler());
   }
   return log(
