@@ -164,8 +164,12 @@ var delay = function() {
 function timeLimitCheck() {
   if (Date.now() > (startTime + runTime)) {
     return log(
-      'Worker closing at end of time limit.', [startTime, runTime, Date.now()]
-    ).then(terminate);
+      'Worker closing at end of time limit.', {
+        startTime: startTime,
+        tunTime: runTime,
+        time: Date.now()
+      }
+    ).then(terminate, createHandler());
   }
   return Parse.Promise.as();
 }
