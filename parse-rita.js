@@ -49,7 +49,7 @@ var enqueue = function(queue, jobName, scalarArgs, objectArgs) {
   job.set('processed', 0);
   job.set('status', 'new');
   job.set('result', '');
-  return job.save(null, { useMasterKey : true });
+  return job.save(null, { useMasterKey : true }).fail(createHandler());
 };
 
 var worker = function(queuesParam) {
@@ -63,7 +63,7 @@ var worker = function(queuesParam) {
     {
       'queues' : queues
     }
-  ).then(poll);
+  ).then(poll, createHandler());
 };
 
 var poll = function() {
