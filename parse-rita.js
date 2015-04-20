@@ -116,16 +116,22 @@ var perform = function(job) {
         }, { useMasterKey : true });
       });
     }
+
     var scalarArgs = job.get('scalarArgs');
     var objectArgs = job.get('objectArgs');
-    return jobs[jobName](scalarArgs, objectArgs).then(function(result) {
+    return jobs[jobName](scalarArgs, objectArgs).then(function (result) {
+      // job completed
       return job.save({
         'status' : 'completed',
-        'result' : result.toString()
+        'result' : JSON.stringify(result)
       }, { useMasterKey : true });
-    }).then(timeLimitCheck).fail(function(error) {
-      return Parse.Promise.as();
-    });
+    }, function (error) {
+      // job failed
+      return job.save({
+        'status' : 'failed',
+        'result' : JSON.stringify(error)
+      }, { useMasterKey : true });
+    }).then(timeLimitCheck);
   });
 };
 
