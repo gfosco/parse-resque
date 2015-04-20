@@ -19,15 +19,15 @@ var runTime = 14.5 * 60 * 1000; // default 14m30s
 
 var setDelayOnEmptyQueue = function(timeInMs) {
   delayTime = timeInMs;
-}
+};
 
 var setRunLimit = function(timeInMs) {
   runTime = timeInMs;
-}
+};
 
 var job = function(jobName, func) {
   jobs[jobName] = func;
-}
+};
 
 var enqueue = function(queue, jobName, scalarArgs, objectArgs) {
   if (!queue || !jobName) {
@@ -49,7 +49,7 @@ var enqueue = function(queue, jobName, scalarArgs, objectArgs) {
   job.set('processed', 0);
   job.set('status', 'new');
   job.set('result', '');
-  return job.save(null, { useMasterKey : true });
+  return job.save(null, { useMasterKey : true }).fail(createHandler());
 };
 
 var worker = function(queuesParam) {
@@ -57,35 +57,34 @@ var worker = function(queuesParam) {
   queues = queuesParam;
   if (!queues || !queues.length) {
     return log('Failed to start worker, queues not provided', []);
+    return log('Failed to start worker, queues not provided', {}).then(null, createHandler());
   }
   return log(
     'Worker started at ' + startTime,
     {
       'queues' : queues
     }
-  ).then(poll);
+  ).then(poll, createHandler());
 };
 
 var poll = function() {
-  return Parse.Promise.as().then(timeLimitCheck).then(function() {
+  return timeLimitCheck().then(function() {
     var query = new Parse.Query(ResqueQueue);
     query.containedIn('queue', queues);
     query.equalTo('processed', 0);
     query.include('objectArgs');
     var jobCount = 0;
     return query.each(function(job) {
-      var promise = new Parse.Promise();
       jobCount++;
-      perform(job).then(function() {
-        promise.resolve();
+      return perform(job).then(function() {
+        return Parse.Promise.as();
       }, function(err) {
         log(
           'Failed to perform job ' + job.id, { error: err }
         ).then(function() {
-          promise.resolve();
+          return Parse.Promise.as();
         });
       });
-      return promise;
     }).then(function() {
       if (jobCount) {
         return log(
@@ -102,9 +101,8 @@ var poll = function() {
 var perform = function(job) {
   job.increment('processed');
   return job.save(null, { useMasterKey : true }).then(function(job) {
-    var promise = new Parse.Promise();
     if (job.get('processed') != 1) {
-      return promise.resolve();
+      return Parse.Promise.as();
     }
     var jobName = job.get('jobName');
     if (!jobs[jobName]) {
@@ -116,24 +114,18 @@ var perform = function(job) {
           status : 'error',
           result : 'Undefined jobName'
         }, { useMasterKey : true });
-      }).then(function() {
-        promise.resolve();
       });
     }
-    var promise = new Parse.Promise();
     var scalarArgs = job.get('scalarArgs');
     var objectArgs = job.get('objectArgs');
-    jobs[jobName](scalarArgs, objectArgs).then(function(result) {
+    return jobs[jobName](scalarArgs, objectArgs).then(function(result) {
       return job.save({
         'status' : 'completed',
         'result' : result.toString()
       }, { useMasterKey : true });
-    }).then(timeLimitCheck).then(function() {
-      promise.resolve();
-    }, function(err) {
-      promise.resolve();
+    }).then(timeLimitCheck).fail(function(error) {
+      return Parse.Promise.as();
     });
-    return promise;
   });
 };
 
@@ -141,38 +133,57 @@ var log = function(message, data) {
   var entry = new ResqueLog();
   entry.set('message', message);
   entry.set('data', data);
-  return entry.save();
-}
-
-var delayUntil;
-var delayPromise;
-
-var delay = function() {
-  delayUntil = Date.now() + delayTime;
-  delayPromise = new Parse.Promise();
-  _delay();
-  return delayPromise;
+  return entry.save(null, {useMasterKey:true});
 };
 
-function _delay() {
-  if (Date.now() > delayUntil) {
-    delayPromise.resolve();
-    return;
-  }
-  process.nextTick(_delay);
-}
+var delay = function() {
+  var delayUntil = Date.now() + delayTime;
+  var delayPromise = new Parse.Promise();
+
+  var _delay = function () {
+    if (Date.now() > delayUntil) {
+      delayPromise.resolve();
+      return;
+    }
+    process.nextTick(_delay);
+  };
+  _delay();
+
+  return delayPromise;
+};
 
 function timeLimitCheck() {
   if (Date.now() > (startTime + runTime)) {
     return log(
-      'Worker closing at end of time limit.', [startTime, runTime, Date.now()]
-    ).then(terminate);
+      'Worker closing at end of time limit.', {
+        startTime: startTime,
+        tunTime: runTime,
+        time: Date.now()
+      }
+    ).then(terminate, createHandler());
   }
   return Parse.Promise.as();
 }
 
 function terminate() {
   process.abort();
+}
+
+function createHandler(response) {
+  /*
+   * Default error handling behaviour for async requests
+   */
+  function errorHandler(result) {
+    if (result && result.message) {
+      var msg = 'Rita error: ' + result.message;
+      console.error(msg);
+      // afterSave doesnt have the response object available
+      if (response) {
+        response.error(msg);
+      }
+    }
+  }
+  return errorHandler;
 }
 
 module.exports = {
