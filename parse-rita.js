@@ -175,6 +175,23 @@ function terminate() {
   process.abort();
 }
 
+function createHandler(response) {
+  /*
+   * Default error handling behaviour for async requests
+   */
+  function errorHandler(result) {
+    if (result && result.message) {
+      var msg = 'Rita error: ' + result.message;
+      console.error(msg);
+      // afterSave doesnt have the response object available
+      if (response) {
+        response.error(msg);
+      }
+    }
+  }
+  return errorHandler;
+}
+
 module.exports = {
   job : job,
   enqueue : enqueue,
