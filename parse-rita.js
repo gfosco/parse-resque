@@ -141,9 +141,8 @@ var log = function(message, data) {
   var entry = new ResqueLog();
   entry.set('message', message);
   entry.set('data', data);
-  return entry.save();
-}
-
+  return entry.save(null, {useMasterKey:true});
+};
 
 var delay = function() {
   var delayUntil = Date.now() + delayTime;
