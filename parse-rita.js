@@ -144,23 +144,22 @@ var log = function(message, data) {
   return entry.save();
 }
 
-var delayUntil;
-var delayPromise;
 
 var delay = function() {
-  delayUntil = Date.now() + delayTime;
-  delayPromise = new Parse.Promise();
+  var delayUntil = Date.now() + delayTime;
+  var delayPromise = new Parse.Promise();
+
+  var _delay = function () {
+    if (Date.now() > delayUntil) {
+      delayPromise.resolve();
+      return;
+    }
+    process.nextTick(_delay);
+  };
   _delay();
+
   return delayPromise;
 };
-
-function _delay() {
-  if (Date.now() > delayUntil) {
-    delayPromise.resolve();
-    return;
-  }
-  process.nextTick(_delay);
-}
 
 function timeLimitCheck() {
   if (Date.now() > (startTime + runTime)) {
