@@ -19,15 +19,15 @@ var runTime = 14.5 * 60 * 1000; // default 14m30s
 
 var setDelayOnEmptyQueue = function(timeInMs) {
   delayTime = timeInMs;
-}
+};
 
 var setRunLimit = function(timeInMs) {
   runTime = timeInMs;
-}
+};
 
 var job = function(jobName, func) {
   jobs[jobName] = func;
-}
+};
 
 var enqueue = function(queue, jobName, scalarArgs, objectArgs) {
   if (!queue || !jobName) {
