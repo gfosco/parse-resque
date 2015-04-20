@@ -49,7 +49,7 @@ var enqueue = function(queue, jobName, scalarArgs, objectArgs) {
   job.set('processed', 0);
   job.set('status', 'new');
   job.set('result', '');
-  return job.save(null, { useMasterKey : true }).fail(createHandler());
+  return job.save(null, { useMasterKey : true }).then(null, createHandler());
 };
 
 var worker = function(queuesParam) {
